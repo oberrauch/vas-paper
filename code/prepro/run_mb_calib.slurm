@@ -1,35 +1,29 @@
 #!/bin/bash
 #
-#SBATCH --job-name=vas_cmip
+# Run the mass balance calibration with CRU climate data.
+# The resulting files ref_stars.csv and mb_calib_params.csv are stored
+# in the ~/run_output/mb_calibration_vas/ directory.
+#
+#SBATCH --job-name=mb_calibration_vas
 #SBATCH --ntasks=1
 #SBATCH --exclusive
 #SBATCH --time=24:00:00
 #SBATCH --mail-user=moritz.oberrauch@student.uibk.ac.at
 #SBATCH --mail-type=ALL
-#SBATCH --qos=low
-
-# ------
-#
-# ------
 
 # Abort whenever a single step fails.
 # Without this, bash will just continue on errors.
 set -e
 
-# Current RGI region
-RGI_REG=`printf "%02d" $SLURM_ARRAY_TASK_ID`
-export RGI_REG
-echo "RGI Region: $RGI_REG"
-
 # On every node, when slurm starts a job, it will make sure the directory
 # /work/username exists and is writable by the jobs user.
 # We create a sub-directory there for this job to store its runtime data at.
-WORKDIR="/work/$SLURM_JOB_USER/$SLURM_JOB_ID/vas_cmip_wdir/"
+WORKDIR="/work/$SLURM_JOB_USER/$SLURM_JOB_ID/mb_calibration_vas/"
 mkdir -p "$WORKDIR"
 echo "Workdir for this run: $WORKDIR"
 
 # Similarly, let's create a dedicated output directory
-OUTDIR="/work/$SLURM_JOB_USER/$SLURM_JOB_ID/vas_cmip_out/"
+OUTDIR="/home/users/moberrauch/paper/run_output/mb_calibration_vas/"
 mkdir -p "$OUTDIR"
 echo "Outdir for this run: $OUTDIR"
 
@@ -42,13 +36,6 @@ export OUTDIR
 export OGGM_DOWNLOAD_CACHE=/home/data/download
 export OGGM_DOWNLOAD_CACHE_RO=1
 export OGGM_EXTRACT_DIR="/work/$SLURM_JOB_USER/$SLURM_JOB_ID/oggm_tmp"
-
-# Link www fmaussion data here to avoid useless downloads
-mkdir -p "$WORKDIR/cache/cluster.klima.uni-bremen.de"
-ln -s /home/www/fmaussion "$WORKDIR/cache/cluster.klima.uni-bremen.de/~fmaussion"
-
-# Add other useful defaults
-export LRU_MAXSIZE=1000
 
 # All commands in the EOF block run inside of the container. Adjust container
 # version to your needs, they are guaranteed to never change after their
@@ -69,17 +56,16 @@ srun -u -n 1 -c "${SLURM_JOB_CPUS_PER_NODE}" singularity exec /home/users/moberr
   # Install needed dependencies
   pip install sklearn
   # OPTIONAL: install OGGM latest and OGGM-VAS
-  pip install --no-deps "git+https://github.com/OGGM/oggm.git@015dcda00b99e409fa51769d97f74458b7777c4d"
-  pip install --no-deps "git+https://github.com/OGGM/oggm-vas.git@5fe61700a9e0299952ae3aaafabdf6acb89d6ef9"
-  # Increase number of allowed open file descriptors
-  ulimit -n 65000
+  pip install --no-deps "git+https://github.com/OGGM/oggm.git@7cfc96c1c0c4c3951cb761c81b28f9a0caea4187"
+  pip install --no-deps "git+https://github.com/OGGM/oggm-vas.git@cfcfac3b1cc5da3c7760dc25b8433c54732d1b7f
+"
   # Finally, the run
-  python3 my_cmip6.py "$1"
+  python3 mb_calibration_vas.py
 EOF
 
-# Write out
-echo "Copying files..."
-rsync -avzh "$OUTDIR/" cmip6_output
+# Copy files from working directory to output directory
+cp "$WORKDIR"/*.csv "$OUTDIR" 2>/dev/null || :
+cp "$WORKDIR"/*.json "$OUTDIR" 2>/dev/null || :
 
 # Print a final message so you can actually see it being done in the output log.
 echo "SLURM DONE"
