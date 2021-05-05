@@ -6,7 +6,6 @@ import os
 
 # Locals
 from oggm import cfg, utils, workflow
-from oggm.core import gis
 from oggm.workflow import execute_entity_task
 import oggm_vas as vascaling
 
@@ -28,14 +27,14 @@ def mb_calibration(rgi_version, baseline):
     vascaling.initialize(logging_level='WORKFLOW')
 
     # LOCAL paths (where to write the OGGM run output)
-    # dirname = 'VAS_ref_mb_{}_RGIV{}'.format(baseline, rgi_version)
-    # wdir = utils.gettempdir(dirname, home=True, reset=True)
-    # utils.mkdir(wdir, reset=True)
-    # cfg.PATHS['working_dir'] = wdir
-
-    # CLUSTER paths
-    wdir = os.environ.get('WORKDIR', '')
+    dirname = 'VAS_ref_mb_{}_RGIV{}'.format(baseline, rgi_version)
+    wdir = utils.gettempdir(dirname, home=True, reset=True)
+    utils.mkdir(wdir, reset=True)
     cfg.PATHS['working_dir'] = wdir
+
+    # # CLUSTER paths
+    # wdir = os.environ.get('WORKDIR', '')
+    # cfg.PATHS['working_dir'] = wdir
 
     # we are running the calibration ourselves
     cfg.PARAMS['run_mb_calibration'] = True
@@ -91,14 +90,8 @@ def mb_calibration(rgi_version, baseline):
     if baseline == 'HISTALP':
         rids = [rid for rid in rids if '-11' in rid]
 
-    # make a new dataframe with those (this takes a while)
-    print('Reading the RGI shapefiles...')
-    rgidf = utils.get_rgi_glacier_entities(rids, version=rgi_version)
-    print('For RGIV{} we have {} candidate reference '
-          'glaciers.'.format(rgi_version, len(rgidf)))
-
     # initialize the glacier regions
-    base_url = "https://cluster.klima.uni-bremen.de/~oggm/gdirs/oggm_v1.4/"\
+    base_url = "https://cluster.klima.uni-bremen.de/~oggm/gdirs/oggm_v1.4/" \
                "L3-L5_files/CRU/elev_bands/qc3/pcp2.5/match_geod"
     # Go - get the pre-processed glacier directories
     gdirs = workflow.init_glacier_directories(rids, from_prepro_level=3,
@@ -112,22 +105,9 @@ def mb_calibration(rgi_version, baseline):
     # get reference glaciers with mass balance measurements
     gdirs = utils.get_ref_mb_glaciers(gdirs)
 
-    # keep only these glaciers
-    rgidf = rgidf.loc[rgidf.RGIId.isin([g.rgi_id for g in gdirs])]
-
-    # save to file
-    rgidf.to_file(os.path.join(wdir, 'mb_ref_glaciers.shp'))
-    print('For RGIV{} and {} we have {} reference glaciers'.format(rgi_version,
-                                                                   baseline,
-                                                                   len(rgidf)))
-
-    # sort for more efficient parallel computing
-    rgidf = rgidf.sort_values('Area', ascending=False)
-
-    # newly initialize glacier directories
-    gdirs = workflow.init_glacier_directories(rgidf, reset=False, force=True)
-    workflow.execute_entity_task(gis.define_glacier_region, gdirs)
-    workflow.execute_entity_task(gis.glacier_masks, gdirs)
+    # make a new dataframe with those (this takes a while)
+    print('For RGIV{} we have {} candidate reference '
+          'glaciers.'.format(rgi_version, len(gdirs)))
 
     # run climate tasks
     vascaling.compute_ref_t_stars(gdirs)
