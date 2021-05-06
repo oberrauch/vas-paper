@@ -70,7 +70,7 @@ srun -u -n 1 -c "${SLURM_JOB_CPUS_PER_NODE}" singularity exec /home/users/moberr
   pip install sklearn
   # OPTIONAL: install OGGM latest and OGGM-VAS
   pip install --no-deps "git+https://github.com/OGGM/oggm.git@7cfc96c1c0c4c3951cb761c81b28f9a0caea4187"
-  pip install --no-deps "git+https://github.com/OGGM/oggm-vas.git@d1adf2ae23411242390dc9ffbfddb494faf69fca"
+  pip install --no-deps "git+https://github.com/OGGM/oggm-vas.git@5a563abc94dadfadb3c888f9304352a60d4871bd"
   # Increase number of allowed open file descriptors
   ulimit -n 65000
   # Finally, the run

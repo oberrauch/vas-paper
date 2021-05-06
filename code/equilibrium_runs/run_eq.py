@@ -7,6 +7,7 @@ import sys
 import logging
 
 # externals
+import numpy as np
 import xarray as xr
 import pandas as pd
 import geopandas as gpd
@@ -17,13 +18,7 @@ from oggm import cfg, utils, workflow, tasks
 from oggm.core import gcm_climate
 import oggm_vas as vascaling
 
-
-def run_cmip():
-    """
-
-
-
-    """
+if __name__ == '__main__':
     # Initialize OGGM and set up the default run parameters
     vascaling.initialize(logging_level='DEBUG')
     rgi_version = '62'
@@ -48,6 +43,7 @@ def run_cmip():
 
     # the bias is defined to be zero during the calibration process,
     # which is why we don't use it here to reproduce the results
+    cfg.PARAMS['use_multiprocessing'] = True
     cfg.PARAMS['use_bias_for_run'] = True
 
     # read RGI entry for the glaciers as DataFrame
@@ -58,6 +54,10 @@ def run_cmip():
         raise RuntimeError('Need an RGI Region')
     rgi_ids = gpd.read_file(
         utils.get_rgi_region_file(rgi_reg, version=rgi_version))
+
+    # For greenland we omit connectivity level 2
+    if rgi_ids == '05':
+        rgi_ids = rgi_ids.loc[rgi_ids['Connect'] != 2]
 
     # get and set path to intersect shapefile
     intersects_db = utils.get_rgi_intersects_region_file(region=rgi_reg)
@@ -77,46 +77,17 @@ def run_cmip():
                                               prepro_base_url=base_url,
                                               prepro_rgi_version=rgi_version)
 
-    # read gcm list
-    gcms = pd.read_csv('/home/www/oggm/cmip6/all_gcm_list.csv', index_col=0)
-
-    # iterate over all specified GCMs
-    for gcm in sys.argv[1:]:
-        # iterate over all SSPs (Shared Socioeconomic Pathways)
-        df1 = gcms.loc[gcms.gcm == gcm]
-        for ssp in df1.ssp.unique():
-            df2 = df1.loc[df1.ssp == ssp]
-            assert len(df2) == 2
-            # get temperature projections
-            ft = df2.loc[df2['var'] == 'tas'].iloc[0]
-            # get precipitation projections
-            fp = df2.loc[df2['var'] == 'pr'].iloc[0].path
-            rid = ft.fname.replace('_r1i1p1f1_tas.nc', '')
-            ft = ft.path
-
-            log.workflow('Starting run for {}'.format(rid))
-
-            workflow.execute_entity_task(gcm_climate.process_cmip_data, gdirs,
-                                         filesuffix='_' + rid,
-                                         # recognize the climate file for later
-                                         fpath_temp=ft,
-                                         # temperature projections
-                                         fpath_precip=fp,  # precip projections
-                                         year_range=('1981', '2020'))
-
-            workflow.execute_entity_task(vascaling.run_from_climate_data,
-                                         gdirs, climate_filename='gcm_data',
-                                         climate_input_filesuffix='_' + rid,
-                                         init_model_filesuffix='_historical',
-                                         output_filesuffix=rid,
-                                         return_value=False)
-            gcm_dir = os.path.join(outdir, 'RGI' + rgi_reg, gcm)
-            utils.mkdir(gcm_dir)
-            utils.compile_run_output(gdirs, input_filesuffix=rid,
-                                     path=os.path.join(gcm_dir, rid + '.nc'))
+    for temp_bias in np.arange(-0.5, 3, 0.5):
+        filesuffix = "bias{:+.1f}".format(temp_bias)
+        workflow.execute_entity_task(vascaling.run_constant_climate,
+                                     gdirs, nyears=3000, halfsize=10,
+                                     temperature_bias=temp_bias,
+                                     init_model_filesuffix='_historical',
+                                     output_filesuffix=filesuffix,
+                                     return_value=False)
+        eq_dir = os.path.join(outdir, 'RGI' + rgi_reg)
+        utils.mkdir(eq_dir)
+        utils.compile_run_output(gdirs, input_filesuffix=filesuffix,
+                                 path=os.path.join(eq_dir, filesuffix + '.nc'))
 
     log.workflow('OGGM Done')
-
-
-if __name__ == '__main__':
-    run_cmip()

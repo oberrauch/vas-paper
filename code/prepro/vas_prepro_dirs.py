@@ -41,11 +41,15 @@ if __name__ == '__main__':
 
     # read RGI entry for the glaciers as DataFrame
     # containing the outline area as shapefile
-    rgi_reg = os.environ.get('OGGM_RGI_REG', '')
+    rgi_reg = os.environ.get('OGGM_RGI_REG', '05')
     if rgi_reg not in ['{:02d}'.format(r) for r in range(1, 20)]:
         raise RuntimeError('Need an RGI Region')
     rgi_ids = gpd.read_file(
         utils.get_rgi_region_file(rgi_reg, version=rgi_version))
+
+    # For greenland we omit connectivity level 2
+    if rgi_ids == '05':
+        rgi_ids = rgi_ids.loc[rgi_ids['Connect'] != 2]
 
     # get and set path to intersect shapefile
     intersects_db = utils.get_rgi_intersects_region_file(region=rgi_reg)
@@ -62,6 +66,7 @@ if __name__ == '__main__':
     # Go - get the pre-processed glacier directories
     base_url = "https://cluster.klima.uni-bremen.de/~oggm/gdirs/oggm_v1.4/" \
                "L3-L5_files/CRU/elev_bands/qc3/pcp2.5/match_geod"
+
     gdirs = workflow.init_glacier_directories(rgi_ids, from_prepro_level=3,
                                               prepro_base_url=base_url,
                                               prepro_rgi_version=rgi_version)
