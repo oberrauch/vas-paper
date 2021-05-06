@@ -3,19 +3,14 @@
 """
 # build-ins
 import os
-import sys
 import logging
 
 # externals
 import numpy as np
-import xarray as xr
-import pandas as pd
 import geopandas as gpd
-import matplotlib.pyplot as plt
 
 # local/oggm modules
-from oggm import cfg, utils, workflow, tasks
-from oggm.core import gcm_climate
+from oggm import cfg, utils, workflow
 import oggm_vas as vascaling
 
 if __name__ == '__main__':
@@ -80,7 +75,7 @@ if __name__ == '__main__':
     for temp_bias in np.arange(-0.5, 3, 0.5):
         filesuffix = "bias{:+.1f}".format(temp_bias)
         workflow.execute_entity_task(vascaling.run_constant_climate,
-                                     gdirs, nyears=3000, halfsize=10,
+                                     gdirs, nyears=3000, y0=2009, halfsize=10,
                                      temperature_bias=temp_bias,
                                      init_model_filesuffix='_historical',
                                      output_filesuffix=filesuffix,

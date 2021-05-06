@@ -59,7 +59,7 @@ srun -u -n 1 -c "${SLURM_JOB_CPUS_PER_NODE}" singularity exec /home/users/moberr
   pip install sklearn
   # OPTIONAL: install OGGM latest and OGGM-VAS
   pip install --no-deps "git+https://github.com/OGGM/oggm.git@7cfc96c1c0c4c3951cb761c81b28f9a0caea4187"
-  pip install --no-deps "git+https://github.com/OGGM/oggm-vas.git@d70e0eb44a6323a0543e3cc568db6dfa64228e90"
+  pip install --no-deps "git+https://github.com/OGGM/oggm-vas.git@efe07854742950eb70189ed80c37c7db004ae844"
   # Finally, the run
   python3 vas_prepro_dirs.py
 EOF
