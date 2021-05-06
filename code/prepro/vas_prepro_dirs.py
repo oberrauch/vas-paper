@@ -48,7 +48,7 @@ if __name__ == '__main__':
         utils.get_rgi_region_file(rgi_reg, version=rgi_version))
 
     # For greenland we omit connectivity level 2
-    if rgi_ids == '05':
+    if rgi_reg == '05':
         rgi_ids = rgi_ids.loc[rgi_ids['Connect'] != 2]
 
     # get and set path to intersect shapefile
