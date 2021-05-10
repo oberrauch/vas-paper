@@ -1,4 +1,9 @@
-""" Run the mass balance calibration for the VAS model. """
+"""Run the mass balance calibration for the VAS model.
+
+Note: does not run on the cluster since the `local_t_star` task can't find
+the `ref_tstars.csv` file, due to the structure of the working directories on
+the cluster (home, fake home, ...). TODO: Could/should be solved.
+"""
 
 # Python imports
 import json

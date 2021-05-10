@@ -1,4 +1,8 @@
-""" TODO
+"""Perform equilibrium experiments with the VAS model.
+
+- the RGI region must be given as environmental variable (handled by slurm)
+- `ConstantMassBalance` model using the climate between 1999 and 2019
+- Temperature bias between -0.5 degC and 3 degC in 0.5 degC steps
 
 """
 # build-ins
@@ -14,12 +18,12 @@ from oggm import cfg, utils, workflow
 import oggm_vas as vascaling
 
 if __name__ == '__main__':
-    # Initialize OGGM and set up the default run parameters
+    # initialize OGGM and set up the default run parameters
     vascaling.initialize(logging_level='DEBUG')
     rgi_version = '62'
     cfg.PARAMS['border'] = 80
 
-    # CLUSTER paths
+    # get paths from environmental variables
     wdir = os.environ.get('WORKDIR', '')
     cfg.PATHS['working_dir'] = wdir
     outdir = os.environ.get('OUTDIR', '')
@@ -61,25 +65,28 @@ if __name__ == '__main__':
     # operational run, all glaciers should run
     cfg.PARAMS['continue_on_error'] = True
 
-    # Module logger
+    # module logger
     log = logging.getLogger(__name__)
     log.workflow('Starting run for RGI reg {}'.format(rgi_reg))
 
-    # Go - get the pre-processed glacier directories
+    # get the pre-processed glacier directories
     base_url = 'https://cluster.klima.uni-bremen.de/' \
                '~moberrauch/prepro_vas_paper/'
     gdirs = workflow.init_glacier_directories(rgi_ids, from_prepro_level=3,
                                               prepro_base_url=base_url,
                                               prepro_rgi_version=rgi_version)
 
+    # run constant climate scenario with different temperature biases
     for temp_bias in np.arange(-0.5, 3, 0.5):
         filesuffix = "bias{:+.1f}".format(temp_bias)
+        # start model run
         workflow.execute_entity_task(vascaling.run_constant_climate,
                                      gdirs, nyears=3000, y0=2009, halfsize=10,
                                      temperature_bias=temp_bias,
                                      init_model_filesuffix='_historical',
                                      output_filesuffix=filesuffix,
                                      return_value=False)
+        # compile and store run output
         eq_dir = os.path.join(outdir, 'RGI' + rgi_reg)
         utils.mkdir(eq_dir)
         utils.compile_run_output(gdirs, input_filesuffix=filesuffix,

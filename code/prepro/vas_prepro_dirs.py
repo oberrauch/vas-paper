@@ -1,6 +1,4 @@
-"""
-
-"""
+"""Run prepro tasks and store glacier directories as archive."""
 # build-ins
 import os
 import logging

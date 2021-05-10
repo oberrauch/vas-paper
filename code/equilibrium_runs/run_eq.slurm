@@ -74,7 +74,7 @@ srun -u -n 1 -c "${SLURM_JOB_CPUS_PER_NODE}" singularity exec /home/users/moberr
   # Increase number of allowed open file descriptors
   ulimit -n 65000
   # Finally, the run
-  python3 run_eq.py
+  python3 equilibrium_experiments.py
 EOF
 
 # Write out
