@@ -1,13 +1,20 @@
-"""Run prepro tasks and store glacier directories as archive."""
+"""
+
+"""
 # build-ins
 import os
+import sys
 import logging
 
 # external libraries
+import xarray as xr
+import pandas as pd
 import geopandas as gpd
+import matplotlib.pyplot as plt
 
 # local/oggm imports
-from oggm import cfg, utils, workflow
+from oggm import cfg, utils, workflow, tasks
+from oggm.core import gcm_climate
 import oggm_vas as vascaling
 
 if __name__ == '__main__':
@@ -45,10 +52,6 @@ if __name__ == '__main__':
     rgi_ids = gpd.read_file(
         utils.get_rgi_region_file(rgi_reg, version=rgi_version))
 
-    # For greenland we omit connectivity level 2
-    if rgi_reg == '05':
-        rgi_ids = rgi_ids.loc[rgi_ids['Connect'] != 2]
-
     # get and set path to intersect shapefile
     intersects_db = utils.get_rgi_intersects_region_file(region=rgi_reg)
     cfg.set_intersects_db(intersects_db)
@@ -60,6 +63,11 @@ if __name__ == '__main__':
     # Module logger
     log = logging.getLogger(__name__)
     log.workflow('Starting run for RGI reg {}'.format(rgi_reg))
+    
+    # TODO: quick/dirty fix removing problematic RGI ID
+    # For greenland we omit connectivity level 2
+    if rgi_reg == '05':
+        rgi_ids = rgi_ids.loc[rgi_ids['Connect'] != 2]
 
     # Go - get the pre-processed glacier directories
     base_url = "https://cluster.klima.uni-bremen.de/~oggm/gdirs/oggm_v1.4/" \
@@ -77,7 +85,7 @@ if __name__ == '__main__':
                                  gdirs, ys=2000, ye=2020,
                                  output_filesuffix='_historical')
     # store summary
-    outpath = os.path.join(wdir, f'historical_run_output_{rgi_reg}.nc')
+    outpath = os.path.join(wdir, f'run_output_historical_{rgi_reg}.nc')
     utils.compile_run_output(gdirs, input_filesuffix='_historical',
                              path=outpath)
 

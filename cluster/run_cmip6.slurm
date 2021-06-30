@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-#SBATCH --job-name=vas_prepro
+#SBATCH --job-name=vas_cmip
 #SBATCH --ntasks=1
 #SBATCH --exclusive
 #SBATCH --time=24:00:00
@@ -13,20 +13,19 @@
 set -e
 
 # Current RGI region
-OGGM_RGI_REG=`printf "%02d" $SLURM_ARRAY_TASK_ID`
-export OGGM_RGI_REG
-echo "RGI Region: $OGGM_RGI_REG"
+RGI_REG=`printf "%02d" $SLURM_ARRAY_TASK_ID`
+export RGI_REG
+echo "RGI Region: $RGI_REG"
 
 # On every node, when slurm starts a job, it will make sure the directory
 # /work/username exists and is writable by the jobs user.
 # We create a sub-directory there for this job to store its runtime data at.
-WORKDIR="/work/$SLURM_JOB_USER/$SLURM_JOB_ID/vas_prepro"
+WORKDIR="/work/$SLURM_JOB_USER/$SLURM_JOB_ID/vas_cmip_wdir/"
 mkdir -p "$WORKDIR"
 echo "Workdir for this run: $WORKDIR"
 
-# The preprocessed glacier directories are directly stored in the publicly
-# available directory on the cluster.
-OUTDIR="/home/www/moberrauch/prepro_vas_paper"
+# Similarly, let's create a dedicated output directory
+OUTDIR="/work/$SLURM_JOB_USER/$SLURM_JOB_ID/vas_cmip_out/"
 mkdir -p "$OUTDIR"
 echo "Outdir for this run: $OUTDIR"
 
@@ -40,10 +39,17 @@ export OGGM_DOWNLOAD_CACHE=/home/data/download
 export OGGM_DOWNLOAD_CACHE_RO=1
 export OGGM_EXTRACT_DIR="/work/$SLURM_JOB_USER/$SLURM_JOB_ID/oggm_tmp"
 
+# Link www fmaussion data here to avoid useless downloads
+mkdir -p "$WORKDIR/cache/cluster.klima.uni-bremen.de"
+ln -s /home/www/fmaussion "$WORKDIR/cache/cluster.klima.uni-bremen.de/~fmaussion"
+
+# Add other useful defaults
+export LRU_MAXSIZE=1000
+
 # All commands in the EOF block run inside of the container. Adjust container
 # version to your needs, they are guaranteed to never change after their
 # respective day has passed.
-srun -u -n 1 -c "${SLURM_JOB_CPUS_PER_NODE}" singularity exec /home/users/moberrauch/oggm_20210430.sif bash -s <<EOF
+srun -u -n 1 -c "${SLURM_JOB_CPUS_PER_NODE}" singularity exec /home/users/moberrauch/oggm_20210122.sif bash -s <<EOF
   set -e
   # Setup a fake home dir inside of our workdir, so we don't clutter the actual
   # shared homedir with potentially incompatible stuff.
@@ -59,19 +65,17 @@ srun -u -n 1 -c "${SLURM_JOB_CPUS_PER_NODE}" singularity exec /home/users/moberr
   # Install needed dependencies
   pip install sklearn
   # OPTIONAL: install OGGM latest and OGGM-VAS
-  pip install --no-deps "git+https://github.com/OGGM/oggm.git@7cfc96c1c0c4c3951cb761c81b28f9a0caea4187"
-  pip install --no-deps "git+https://github.com/OGGM/oggm-vas.git@c994628e544e45b010b489d47614418059e775bd"
+  pip install --no-deps "git+https://github.com/OGGM/oggm.git@015dcda00b99e409fa51769d97f74458b7777c4d"
+  pip install --no-deps "git+https://github.com/OGGM/oggm-vas.git@5fe61700a9e0299952ae3aaafabdf6acb89d6ef9"
+  # Increase number of allowed open file descriptors
+  ulimit -n 65000
   # Finally, the run
-  python3 vas_prepro_dirs.py
+  python3 run_cmip6.py "$1"
 EOF
 
 # Write out
 echo "Copying files..."
-rsync -avzh "$WORKDIR/run_output_historical_$OGGM_RGI_REG.nc" "$OUTDIR"
-# Adjust directory structure according to OGGM prepro dir convention.
-# The directory structure RGI62/b_080/L3 corresponds to RGI version 6.2,
-# cfp.PARAMS['border'] = 80 and prepro level 3
-rsync -avzh "$WORKDIR/per_glacier/"* "$OUTDIR/RGI62/b_080/L3/"
+rsync -avzh "$OUTDIR/" cmip6_output
 
 # Print a final message so you can actually see it being done in the output log.
 echo "SLURM DONE"

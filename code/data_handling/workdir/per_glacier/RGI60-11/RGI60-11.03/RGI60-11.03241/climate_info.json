@@ -1,0 +1,1 @@
+{"baseline_climate_source": "CRU TS4.04", "baseline_hydro_yr_0": 1902, "baseline_hydro_yr_1": 2019, "mb_calib_params": {"temp_default_gradient": -0.0065, "temp_all_solid": 4, "temp_melt": 0, "prcp_scaling_factor": 3, "prcp_default_gradient": 0.0004}}

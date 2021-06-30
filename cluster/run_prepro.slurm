@@ -20,13 +20,12 @@ echo "RGI Region: $OGGM_RGI_REG"
 # On every node, when slurm starts a job, it will make sure the directory
 # /work/username exists and is writable by the jobs user.
 # We create a sub-directory there for this job to store its runtime data at.
-WORKDIR="/work/$SLURM_JOB_USER/$SLURM_JOB_ID/vas_prepro"
+WORKDIR="/work/$SLURM_JOB_USER/$SLURM_JOB_ID/vas_prepro/"
 mkdir -p "$WORKDIR"
 echo "Workdir for this run: $WORKDIR"
 
-# The preprocessed glacier directories are directly stored in the publicly
-# available directory on the cluster.
-OUTDIR="/home/www/moberrauch/prepro_vas_paper"
+# Similarly, let's create a dedicated output directory
+OUTDIR="/home/users/moberrauch/run_output/vas_prepro/"
 mkdir -p "$OUTDIR"
 echo "Outdir for this run: $OUTDIR"
 
@@ -60,18 +59,15 @@ srun -u -n 1 -c "${SLURM_JOB_CPUS_PER_NODE}" singularity exec /home/users/moberr
   pip install sklearn
   # OPTIONAL: install OGGM latest and OGGM-VAS
   pip install --no-deps "git+https://github.com/OGGM/oggm.git@7cfc96c1c0c4c3951cb761c81b28f9a0caea4187"
-  pip install --no-deps "git+https://github.com/OGGM/oggm-vas.git@c994628e544e45b010b489d47614418059e775bd"
+  pip install --no-deps "git+https://github.com/OGGM/oggm-vas.git@5a563abc94dadfadb3c888f9304352a60d4871bd"
   # Finally, the run
   python3 vas_prepro_dirs.py
 EOF
 
 # Write out
 echo "Copying files..."
+rsync -avzh "$WORKDIR/per_glacier" "$OUTDIR"
 rsync -avzh "$WORKDIR/run_output_historical_$OGGM_RGI_REG.nc" "$OUTDIR"
-# Adjust directory structure according to OGGM prepro dir convention.
-# The directory structure RGI62/b_080/L3 corresponds to RGI version 6.2,
-# cfp.PARAMS['border'] = 80 and prepro level 3
-rsync -avzh "$WORKDIR/per_glacier/"* "$OUTDIR/RGI62/b_080/L3/"
 
 # Print a final message so you can actually see it being done in the output log.
 echo "SLURM DONE"

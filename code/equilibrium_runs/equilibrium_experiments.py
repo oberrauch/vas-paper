@@ -24,9 +24,10 @@ if __name__ == '__main__':
     cfg.PARAMS['border'] = 80
 
     # get paths from environmental variables
-    wdir = os.environ.get('WORKDIR', '')
+    # TODO DEBUG: remoce default wdir/outdir
+    wdir = os.environ.get('WORKDIR', '/Users/oberrauch/work/paper/workdirs/eq_runs')
     cfg.PATHS['working_dir'] = wdir
-    outdir = os.environ.get('OUTDIR', '')
+    outdir = os.environ.get('OUTDIR', '/Users/oberrauch/work/paper/outdir/eq_runs')
 
     # define the baseline climate CRU or HISTALP
     cfg.PARAMS['baseline_climate'] = 'CRU'
@@ -42,13 +43,15 @@ if __name__ == '__main__':
 
     # the bias is defined to be zero during the calibration process,
     # which is why we don't use it here to reproduce the results
-    cfg.PARAMS['use_multiprocessing'] = True
+    # TODO DEBUG: cfg.PARAMS['use_multiprocessing'] = True
+    cfg.PARAMS['use_multiprocessing'] = False
     cfg.PARAMS['use_bias_for_run'] = True
 
     # read RGI entry for the glaciers as DataFrame
     # containing the outline area as shapefile
     # RGI glaciers
-    rgi_reg = os.environ.get('RGI_REG', '')
+    # TODO DEBUG
+    rgi_reg = os.environ.get('RGI_REG', '11')
     if rgi_reg not in ['{:02d}'.format(r) for r in range(1, 20)]:
         raise RuntimeError('Need an RGI Region')
     rgi_ids = gpd.read_file(
@@ -63,7 +66,8 @@ if __name__ == '__main__':
     cfg.set_intersects_db(intersects_db)
 
     # operational run, all glaciers should run
-    cfg.PARAMS['continue_on_error'] = True
+    # TODO DEBUG cfg.PARAMS['continue_on_error'] = True
+    cfg.PARAMS['continue_on_error'] = False
 
     # module logger
     log = logging.getLogger(__name__)
@@ -72,12 +76,15 @@ if __name__ == '__main__':
     # get the pre-processed glacier directories
     base_url = 'https://cluster.klima.uni-bremen.de/' \
                '~moberrauch/prepro_vas_paper/'
+    # TODO DEBUG: delete rgi_ids
+    rgi_ids = ['RGI60-11.00007']
     gdirs = workflow.init_glacier_directories(rgi_ids, from_prepro_level=3,
                                               prepro_base_url=base_url,
                                               prepro_rgi_version=rgi_version)
 
     # run constant climate scenario with different temperature biases
-    for temp_bias in np.arange(-0.5, 3, 0.5):
+    # TODO DEBUG np.arange(..., 5.5, ...):
+    for temp_bias in np.arange(-0.5, 1, 0.5):
         filesuffix = "bias{:+.1f}".format(temp_bias)
         # start model run
         workflow.execute_entity_task(vascaling.run_constant_climate,

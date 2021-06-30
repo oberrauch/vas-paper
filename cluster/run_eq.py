@@ -1,18 +1,21 @@
-"""Run prepro tasks and store glacier directories as archive."""
+""" TODO
+
+"""
 # build-ins
 import os
 import logging
 
-# external libraries
+# externals
+import numpy as np
 import geopandas as gpd
 
-# local/oggm imports
+# local/oggm modules
 from oggm import cfg, utils, workflow
 import oggm_vas as vascaling
 
 if __name__ == '__main__':
     # Initialize OGGM and set up the default run parameters
-    vascaling.initialize(logging_level='WORKFLOW')
+    vascaling.initialize(logging_level='DEBUG')
     rgi_version = '62'
     cfg.PARAMS['border'] = 80
 
@@ -21,7 +24,7 @@ if __name__ == '__main__':
     cfg.PATHS['working_dir'] = wdir
     outdir = os.environ.get('OUTDIR', '')
 
-    # define the baseline climate CRU
+    # define the baseline climate CRU or HISTALP
     cfg.PARAMS['baseline_climate'] = 'CRU'
     # set the mb hyper parameters accordingly
     cfg.PARAMS['prcp_scaling_factor'] = 3
@@ -35,11 +38,13 @@ if __name__ == '__main__':
 
     # the bias is defined to be zero during the calibration process,
     # which is why we don't use it here to reproduce the results
+    cfg.PARAMS['use_multiprocessing'] = True
     cfg.PARAMS['use_bias_for_run'] = True
 
     # read RGI entry for the glaciers as DataFrame
     # containing the outline area as shapefile
-    rgi_reg = os.environ.get('OGGM_RGI_REG', '')
+    # RGI glaciers
+    rgi_reg = os.environ.get('RGI_REG', '')
     if rgi_reg not in ['{:02d}'.format(r) for r in range(1, 20)]:
         raise RuntimeError('Need an RGI Region')
     rgi_ids = gpd.read_file(
@@ -54,7 +59,6 @@ if __name__ == '__main__':
     cfg.set_intersects_db(intersects_db)
 
     # operational run, all glaciers should run
-    cfg.PARAMS['use_multiprocessing'] = True
     cfg.PARAMS['continue_on_error'] = True
 
     # Module logger
@@ -62,28 +66,23 @@ if __name__ == '__main__':
     log.workflow('Starting run for RGI reg {}'.format(rgi_reg))
 
     # Go - get the pre-processed glacier directories
-    base_url = "https://cluster.klima.uni-bremen.de/~oggm/gdirs/oggm_v1.4/" \
-               "L3-L5_files/CRU/elev_bands/qc3/pcp2.5/match_geod"
+    base_url = 'https://cluster.klima.uni-bremen.de/' \
+               '~moberrauch/prepro_vas_paper/'
     gdirs = workflow.init_glacier_directories(rgi_ids, from_prepro_level=3,
                                               prepro_base_url=base_url,
                                               prepro_rgi_version=rgi_version)
 
-    # run vascaling climate tasks
-    workflow.execute_entity_task(vascaling.local_t_star, gdirs)
-    # adjust mass balance residual with geodetic observations
-    vascaling.match_regional_geodetic_mb(gdirs=gdirs, rgi_reg=rgi_reg)
-    # prepare historic "spinup"
-    workflow.execute_entity_task(vascaling.run_historic_from_climate_data,
-                                 gdirs, ys=2000, ye=2020,
-                                 output_filesuffix='_historical')
-    # store summary
-    outpath = os.path.join(wdir, f'historical_run_output_{rgi_reg}.nc')
-    utils.compile_run_output(gdirs, input_filesuffix='_historical',
-                             path=outpath)
-
-    # compress all gdirs
-    workflow.execute_entity_task(utils.gdir_to_tar, gdirs, delete=False)
-    # compress 1000 bundles
-    utils.base_dir_to_tar()
+    for temp_bias in np.arange(-0.5, 5.5, .5):
+        filesuffix = "bias{:+.1f}".format(temp_bias)
+        workflow.execute_entity_task(vascaling.run_constant_climate,
+                                     gdirs, nyears=3000, y0=2009, halfsize=10,
+                                     temperature_bias=temp_bias,
+                                     init_model_filesuffix='_historical',
+                                     output_filesuffix=filesuffix,
+                                     return_value=False)
+        eq_dir = os.path.join(outdir, 'RGI' + rgi_reg)
+        utils.mkdir(eq_dir)
+        utils.compile_run_output(gdirs, input_filesuffix=filesuffix,
+                                 path=os.path.join(eq_dir, filesuffix + '.nc'))
 
     log.workflow('OGGM Done')
