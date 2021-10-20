@@ -77,26 +77,28 @@ def run_cmip():
 
     # Go - get the pre-processed glacier directories
     base_url = 'https://cluster.klima.uni-bremen.de/' \
-               '~moberrauch/prepro_vas_paper/'
+               '~moberrauch/prepro_vas_paper_ben/'
     gdirs = workflow.init_glacier_directories(rgi_ids, from_prepro_level=3,
                                               prepro_base_url=base_url,
                                               prepro_rgi_version=rgi_version)
 
     # read gcm list
-    gcms = pd.read_csv('https://cluster.klima.uni-bremen.de/~oggm/cmip6/all_gcm_list.csv', index_col=0)
+    gcms = pd.read_csv('https://cluster.klima.uni-bremen.de/~oggm/cmip5-ng/all_gcm_list.csv', index_col=0)
 
     # iterate over all specified GCMs
     for gcm in sys.argv[1:]:
-        # iterate over all SSPs (Shared Socioeconomic Pathways)
+        # iterate over all RCPs (Representative Concentration Pathways)
         df1 = gcms.loc[gcms.gcm == gcm]
-        for ssp in df1.ssp.unique():
-            df2 = df1.loc[df1.ssp == ssp]
+        rcps = df1.rcp.unique()
+        rcps = rcps[['rcp' in rcp for rcp in rcps]]
+        for rcp in rcps:
+            df2 = df1.loc[df1.rcp == rcp]
             assert len(df2) == 2
             # get temperature projections
             ft = df2.loc[df2['var'] == 'tas'].iloc[0]
             # get precipitation projections
             fp = df2.loc[df2['var'] == 'pr'].iloc[0].path
-            rid = ft.fname.replace('_r1i1p1f1_tas.nc', '')
+            rid = ft.fname.replace('tas_mon_', '').replace('_r1i1p1_g025.nc', '')
             ft = ft.path
 
             log.workflow('Starting run for {}'.format(rid))
@@ -117,7 +119,7 @@ def run_cmip():
                                          # use a different scenario
                                          climate_input_filesuffix='_' + rid,
                                          # this is important! Start from 2019
-                                         init_model_filesuffix='_historical',
+                                         init_model_filesuffix='_ben',
                                          # recognize the run for later
                                          output_filesuffix='_' + rid,
                                          return_value=False)

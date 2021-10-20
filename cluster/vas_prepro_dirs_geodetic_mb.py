@@ -70,15 +70,14 @@ if __name__ == '__main__':
 
     # run vascaling climate tasks
     workflow.execute_entity_task(vascaling.local_t_star, gdirs)
-    # adjust mass balance residual with geodetic observations
-    # vascaling.match_regional_geodetic_mb(gdirs=gdirs, rgi_reg=rgi_reg)
+    workflow.execute_entity_task(vascaling.mu_star_calibration_from_geodetic_mb, gdirs)
     # prepare historic "spinup"
     workflow.execute_entity_task(vascaling.run_historic_from_climate_data,
                                  gdirs, ys=2000, ye=2020,
-                                 output_filesuffix='_ben')
+                                 output_filesuffix='_geodetic_mb')
     # store summary
-    outpath = os.path.join(wdir, f'run_output_ben_{rgi_reg}.nc')
-    utils.compile_run_output(gdirs, input_filesuffix='_ben',
+    outpath = os.path.join(wdir, f'run_output_geodetic_mb_{rgi_reg}.nc')
+    utils.compile_run_output(gdirs, input_filesuffix='_geodetic_mb',
                              path=outpath)
 
     # compress all gdirs
